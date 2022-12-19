@@ -59,6 +59,7 @@ const (
 	MultiSigTy                               // Multi signature.
 	NullDataTy                               // Empty data-only (provably prunable).
 	WitnessUnknownTy                         // Witness unknown
+	WitnessV1TaprootTy
 )
 
 // scriptClassToName houses the human-readable strings which describe each
@@ -72,6 +73,7 @@ var scriptClassToName = []string{
 	WitnessV0ScriptHashTy: "witness_v0_scripthash",
 	MultiSigTy:            "multisig",
 	NullDataTy:            "nulldata",
+	WitnessV1TaprootTy:    "witness_v1_taproot",
 	WitnessUnknownTy:      "witness_unknown",
 }
 
@@ -354,6 +356,21 @@ func extractWitnessPubKeyHash(script []byte) []byte {
 		script[1] == OP_DATA_20 {
 
 		return script[2:22]
+	}
+
+	return nil
+}
+
+// extractWitnessV1KeyBytes extracts the raw public key bytes script if it is
+// standard pay-to-witness-script-hash v1 script. It will return nil otherwise.
+func extractWitnessV1KeyBytes(script []byte) []byte {
+	// A pay-to-witness-script-hash script is of the form:
+	//   OP_1 OP_DATA_32 <32-byte-hash>
+	if len(script) == witnessV1TaprootLen &&
+		script[0] == OP_1 &&
+		script[1] == OP_DATA_32 {
+
+		return script[2:34]
 	}
 
 	return nil
@@ -963,6 +980,15 @@ func ExtractPkScriptAddrs(pkScript []byte, chainParams *chaincfg.Params) (Script
 			addrs = append(addrs, addr)
 		}
 		return WitnessV0ScriptHashTy, addrs, 1, nil
+	}
+
+	if rawKey := extractWitnessV1KeyBytes(pkScript); rawKey != nil {
+		var addrs []ltcutil.Address
+		addr, err := ltcutil.NewAddressTaproot(rawKey, chainParams)
+		if err == nil {
+			addrs = append(addrs, addr)
+		}
+		return WitnessV1TaprootTy, addrs, 1, nil
 	}
 
 	// If none of the above passed, then the address must be non-standard.
