@@ -11,11 +11,12 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/crypto/ripemd160"
+
 	"github.com/ltcsuite/ltcd/btcec/v2"
 	"github.com/ltcsuite/ltcd/chaincfg"
 	"github.com/ltcsuite/ltcd/ltcutil/base58"
 	"github.com/ltcsuite/ltcd/ltcutil/bech32"
-	"golang.org/x/crypto/ripemd160"
 )
 
 // UnsupportedWitnessVerError describes an error where a segwit address being
@@ -158,13 +159,6 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 			witnessVer, witnessProg, err := decodeSegWitAddress(addr)
 			if err != nil {
 				return nil, err
-			}
-
-			// We currently only support P2WPKH and P2WSH, which is
-			// witness version 0 and P2TR which is witness version
-			// 1.
-			if witnessVer != 0 && witnessVer != 1 {
-				return nil, UnsupportedWitnessVerError(witnessVer)
 			}
 
 			// The HRP is everything before the found '1'.
